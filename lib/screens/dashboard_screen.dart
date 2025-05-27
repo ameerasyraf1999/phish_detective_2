@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../main.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -16,6 +17,8 @@ class DashboardScreen extends StatelessWidget {
           _buildStatusCard(context),
           const SizedBox(height: 20),
           _buildStatsCards(stats),
+          const SizedBox(height: 20),
+          _buildChart(context, stats),
           const SizedBox(height: 20),
           _buildRecentActivity(context, recentMessages),
         ],
@@ -121,6 +124,63 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildChart(BuildContext context, _Stats stats) {
+    if (stats.total == 0) return const SizedBox.shrink();
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Message Analysis',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: PieChart(
+                PieChartData(
+                  sections: [
+                    PieChartSectionData(
+                      value: stats.safe.toDouble(),
+                      title: 'Safe\n${stats.safe}',
+                      color: Colors.green,
+                      radius: 80,
+                    ),
+                    PieChartSectionData(
+                      value: stats.phishing.toDouble(),
+                      title: 'Phishing\n${stats.phishing}',
+                      color: Colors.red,
+                      radius: 80,
+                    ),
+                    if (stats.pending > 0)
+                      PieChartSectionData(
+                        value: stats.pending.toDouble(),
+                        title: 'Pending\n${stats.pending}',
+                        color: Colors.orange,
+                        radius: 80,
+                      ),
+                    if (stats.medium > 0)
+                      PieChartSectionData(
+                        value: stats.medium.toDouble(),
+                        title: 'Medium\n${stats.medium}',
+                        color: Colors.amber,
+                        radius: 80,
+                      ),
+                  ],
+                  centerSpaceRadius: 40,
+                  sectionsSpace: 2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRecentActivity(BuildContext context, List recent) {
     return Card(
       elevation: 4,
@@ -219,9 +279,32 @@ class DashboardScreen extends StatelessWidget {
     int total = fetchedMessages.length;
     int phishing = fetchedMessages.where((m) => m['isPhishing'] == true).length;
     int safe = fetchedMessages
-        .where((m) => m['isAnalyzed'] == true && m['isPhishing'] == false)
+        .where(
+          (m) =>
+              m['isAnalyzed'] == true &&
+              m['isPhishing'] == false &&
+              ((m['phishingScore'] ?? 0) < 0.2),
+        )
         .length;
-    return _Stats(total: total, phishing: phishing, safe: safe);
+    int medium = fetchedMessages
+        .where(
+          (m) =>
+              m['isAnalyzed'] == true &&
+              m['isPhishing'] == false &&
+              (m['phishingScore'] ?? 0) >= 0.2 &&
+              (m['phishingScore'] ?? 0) < 0.8,
+        )
+        .length;
+    int pending = fetchedMessages
+        .where((m) => !(m['isAnalyzed'] ?? false))
+        .length;
+    return _Stats(
+      total: total,
+      phishing: phishing,
+      safe: safe,
+      medium: medium,
+      pending: pending,
+    );
   }
 }
 
@@ -229,5 +312,13 @@ class _Stats {
   final int total;
   final int phishing;
   final int safe;
-  _Stats({required this.total, required this.phishing, required this.safe});
+  final int medium;
+  final int pending;
+  _Stats({
+    required this.total,
+    required this.phishing,
+    required this.safe,
+    required this.medium,
+    required this.pending,
+  });
 }
