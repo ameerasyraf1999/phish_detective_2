@@ -150,6 +150,17 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildMessageTile(Map<String, dynamic> msgMap) {
     final sms = msgMap['sms'];
+    String address, body;
+    dynamic date;
+    if (sms is Map) {
+      address = sms['address'] ?? 'Unknown';
+      body = sms['body'] ?? '';
+      date = sms['date'];
+    } else {
+      address = sms.address ?? 'Unknown';
+      body = sms.body ?? '';
+      date = sms.date;
+    }
     final isAnalyzed = msgMap['isAnalyzed'] ?? false;
     final isPhishing = msgMap['isPhishing'] ?? false;
     Color iconColor;
@@ -175,20 +186,18 @@ class DashboardScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sms.address ?? 'Unknown',
+                  address,
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  (sms.body?.length ?? 0) > 50
-                      ? '${sms.body.substring(0, 50)}...'
-                      : (sms.body ?? ''),
+                  body.length > 50 ? '${body.substring(0, 50)}...' : body,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
           ),
           Text(
-            _formatTime(sms.date),
+            _formatTime(date),
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
         ],

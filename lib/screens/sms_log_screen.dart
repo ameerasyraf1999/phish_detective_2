@@ -116,6 +116,17 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
 
   Widget _buildMessageCard(Map<String, dynamic> msgMap) {
     final sms = msgMap['sms'];
+    String address, body;
+    dynamic date;
+    if (sms is Map) {
+      address = sms['address'] ?? 'Unknown';
+      body = sms['body'] ?? '';
+      date = sms['date'];
+    } else {
+      address = sms.address ?? 'Unknown';
+      body = sms.body ?? '';
+      date = sms.date;
+    }
     final isAnalyzed = msgMap['isAnalyzed'] ?? false;
     final isPhishing = msgMap['isPhishing'] ?? false;
     final phishingScore = msgMap['phishingScore'];
@@ -184,19 +195,16 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'From: ${sms.address ?? sms.sender ?? "Unknown"}',
+                'From: ${address}',
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 4),
-              Text(
-                (sms.body ?? sms.message ?? '').toString(),
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              Text(body, style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 8),
               Row(
                 children: [
                   Text(
-                    _formatDateTime(sms.date ?? sms.timestamp),
+                    _formatDateTime(date),
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],

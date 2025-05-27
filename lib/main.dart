@@ -4,6 +4,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/sms_log_screen.dart';
 import 'screens/about_us_screen.dart';
 import 'services/phishing_detection_service.dart';
+import 'services/local_db_service.dart';
 
 List<Map<String, dynamic>> fetchedMessages = [];
 
@@ -12,8 +13,23 @@ Future<void> backgroundMessageHandler(SmsMessage message) async {
   // Do nothing or minimal work here. Do not update fetchedMessages.
 }
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Load from local DB on startup
+  final dbLogs = await LocalDbService.getAllSmsLogs();
+  fetchedMessages = dbLogs.map((row) {
+    return {
+      'sms': {
+        'address': row['address'],
+        'body': row['body'],
+        'date': row['date'],
+      },
+      'isAnalyzed': row['isAnalyzed'] == 1,
+      'isPhishing': row['isPhishing'] == 1,
+      'phishingScore': row['phishingScore'],
+    };
+  }).toList();
+
   final telephony = Telephony.instance;
   telephony.listenIncomingSms(
     onNewMessage: (SmsMessage message) async {
@@ -36,6 +52,7 @@ void main() {
         msgMap['isPhishing'] = false;
         msgMap['phishingScore'] = 0.0;
       }
+      await LocalDbService.insertSmsLog(msgMap);
     },
     onBackgroundMessage: backgroundMessageHandler,
   );
