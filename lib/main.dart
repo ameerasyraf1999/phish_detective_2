@@ -1,53 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:another_telephony/telephony.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/sms_log_screen.dart';
+import 'screens/about_us_screen.dart';
+import 'services/phishing_detection_service.dart';
 
-List<SmsMessage> fetchedMessages = [];
-
-class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.sms, size: 64, color: Colors.deepPurple),
-          SizedBox(height: 16),
-          Text('Listening for incoming SMS...', style: TextStyle(fontSize: 18)),
-        ],
-      ),
-    );
-  }
-}
-
-class SmsLogScreen extends StatelessWidget {
-  const SmsLogScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return fetchedMessages.isEmpty
-        ? const Center(child: Text('No SMS messages loaded.'))
-        : ListView.builder(
-            itemCount: fetchedMessages.length,
-            itemBuilder: (context, index) {
-              final sms = fetchedMessages[index];
-              return ListTile(
-                title: Text(sms.address ?? 'Unknown'),
-                subtitle: Text(sms.body ?? ''),
-                trailing: const Icon(Icons.sms),
-              );
-            },
-          );
-  }
-}
-
-class AboutUsScreen extends StatelessWidget {
-  const AboutUsScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text('About Us'));
-  }
-}
+List<Map<String, dynamic>> fetchedMessages = [];
 
 @pragma('vm:entry-point')
 Future<void> backgroundMessageHandler(SmsMessage message) async {
@@ -58,8 +16,26 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final telephony = Telephony.instance;
   telephony.listenIncomingSms(
-    onNewMessage: (SmsMessage message) {
-      fetchedMessages.insert(0, message);
+    onNewMessage: (SmsMessage message) async {
+      final msgMap = {
+        'sms': message,
+        'isAnalyzed': false,
+        'isPhishing': false,
+        'phishingScore': null,
+      };
+      fetchedMessages.insert(0, msgMap);
+      try {
+        final result = await PhishingDetectionService.detectPhishing(
+          message.body ?? '',
+        );
+        msgMap['isAnalyzed'] = true;
+        msgMap['isPhishing'] = result.isPhishing;
+        msgMap['phishingScore'] = result.phishingProbability;
+      } catch (e) {
+        msgMap['isAnalyzed'] = true;
+        msgMap['isPhishing'] = false;
+        msgMap['phishingScore'] = 0.0;
+      }
     },
     onBackgroundMessage: backgroundMessageHandler,
   );
