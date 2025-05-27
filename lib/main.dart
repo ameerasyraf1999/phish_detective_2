@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:another_telephony/telephony.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/sms_log_screen.dart';
 import 'screens/about_us_screen.dart';
@@ -7,6 +8,57 @@ import 'services/phishing_detection_service.dart';
 import 'services/local_db_service.dart';
 
 List<Map<String, dynamic>> fetchedMessages = [];
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> _showNotification(String title, String body) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+        'sms_phish_channel',
+        'SMS Phishing Alerts',
+        channelDescription: 'Notifications for SMS Phishing Detector',
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'ticker',
+      );
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(
+    android: androidPlatformChannelSpecifics,
+  );
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    title,
+    body,
+    platformChannelSpecifics,
+  );
+}
+
+Future<void> _showPersistentNotification() async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+        'sms_phish_persistent',
+        'SMS Phishing Monitoring',
+        channelDescription: 'Persistent notification for background monitoring',
+        importance: Importance.low,
+        priority: Priority.low,
+        ongoing: true,
+        autoCancel: false,
+        showWhen: false,
+      );
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(
+    android: androidPlatformChannelSpecifics,
+  );
+  await flutterLocalNotificationsPlugin.show(
+    1,
+    'SMS Phishing Detector',
+    'Monitoring for new SMS messages...',
+    platformChannelSpecifics,
+  );
+}
+
+Future<void> _cancelPersistentNotification() async {
+  await flutterLocalNotificationsPlugin.cancel(1);
+}
 
 @pragma('vm:entry-point')
 Future<void> backgroundMessageHandler(SmsMessage message) async {
@@ -21,6 +73,14 @@ class MonitoringController {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialize notifications
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
   // Load from local DB on startup
   final dbLogs = await LocalDbService.getAllSmsLogs();
   fetchedMessages = dbLogs.map((row) {
@@ -54,6 +114,13 @@ void main() async {
         msgMap['isAnalyzed'] = true;
         msgMap['isPhishing'] = result.isPhishing;
         msgMap['phishingScore'] = result.phishingProbability;
+        // Push notification for phishing or medium/high risk
+        if (result.isPhishing || result.phishingProbability >= 0.2) {
+          await _showNotification(
+            result.isPhishing ? 'Phishing SMS Detected!' : 'Suspicious SMS',
+            message.body ?? '',
+          );
+        }
       } catch (e) {
         msgMap['isAnalyzed'] = true;
         msgMap['isPhishing'] = false;
@@ -62,7 +129,16 @@ void main() async {
       await LocalDbService.insertSmsLog(msgMap);
     },
     onBackgroundMessage: backgroundMessageHandler,
+    listenInBackground: true,
   );
+
+  // Show persistent notification if monitoring is active
+  if (MonitoringController.state == MonitoringState.active) {
+    await _showPersistentNotification();
+  } else {
+    await _cancelPersistentNotification();
+  }
+
   runApp(const MyApp());
 }
 
