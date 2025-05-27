@@ -13,6 +13,12 @@ Future<void> backgroundMessageHandler(SmsMessage message) async {
   // Do nothing or minimal work here. Do not update fetchedMessages.
 }
 
+enum MonitoringState { active, inactive }
+
+class MonitoringController {
+  static MonitoringState state = MonitoringState.active;
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Load from local DB on startup
@@ -33,6 +39,7 @@ void main() async {
   final telephony = Telephony.instance;
   telephony.listenIncomingSms(
     onNewMessage: (SmsMessage message) async {
+      if (MonitoringController.state == MonitoringState.inactive) return;
       final msgMap = {
         'sms': message,
         'isAnalyzed': false,

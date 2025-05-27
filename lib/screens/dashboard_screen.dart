@@ -1,9 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool isActive = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActivationState();
+  }
+
+  Future<void> _loadActivationState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getBool('monitoring_active');
+    final newActive = saved ?? true;
+    setState(() {
+      isActive = newActive;
+    });
+    MonitoringController.state = newActive
+        ? MonitoringState.active
+        : MonitoringState.inactive;
+  }
+
+  Future<void> _saveActivationState(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('monitoring_active', value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +64,11 @@ class DashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            Icon(Icons.security, size: 32, color: Colors.green),
+            Icon(
+              isActive ? Icons.security : Icons.security_outlined,
+              size: 32,
+              color: isActive ? Colors.green : Colors.grey,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -44,13 +79,29 @@ class DashboardScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   Text(
-                    'Active - Monitoring SMS messages',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.green),
+                    isActive
+                        ? 'Active - Monitoring SMS messages'
+                        : 'Inactive - Monitoring paused',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: isActive ? Colors.green : Colors.grey,
+                    ),
                   ),
                 ],
               ),
+            ),
+            Switch(
+              value: isActive,
+              onChanged: (val) async {
+                setState(() {
+                  isActive = val;
+                });
+                MonitoringController.state = val
+                    ? MonitoringState.active
+                    : MonitoringState.inactive;
+                await _saveActivationState(val);
+              },
+              activeColor: Colors.green,
+              inactiveThumbColor: Colors.grey,
             ),
           ],
         ),
