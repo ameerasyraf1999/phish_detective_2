@@ -165,7 +165,7 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
                   const Spacer(),
                   if (phishingScore != null && isAnalyzed)
                     Text(
-                      'Score: ${(phishingScore * 100).toStringAsFixed(1)}%',
+                      'Phishing Probability: ${phishingScore.toStringAsFixed(4)}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],

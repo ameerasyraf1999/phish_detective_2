@@ -64,9 +64,9 @@ class PhishingResult {
   }
 
   String get riskLevel {
-    if (phishingProbability >= 0.5) return 'High Risk';
-    if (phishingProbability >= 0.12) return 'Medium Risk';
-    if (phishingProbability >= 0.02) return 'Low Risk';
+    if (phishingProbability >= 0.40) return 'High Risk';
+    if (phishingProbability >= 0.20) return 'Medium Risk';
+    if (phishingProbability >= 0.10) return 'Low Risk';
     return 'Safe';
   }
 }
