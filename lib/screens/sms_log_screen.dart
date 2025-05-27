@@ -123,6 +123,7 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
     Color iconColor;
     IconData icon;
     String status;
+    // Determine status and color
     if (!isAnalyzed) {
       borderColor = Colors.orange;
       iconColor = Colors.orange;
@@ -133,6 +134,13 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
       iconColor = Colors.red;
       icon = Icons.warning;
       status = 'Phishing Detected';
+    } else if (phishingScore != null &&
+        phishingScore >= 0.2 &&
+        phishingScore < 0.8) {
+      borderColor = Colors.amber;
+      iconColor = Colors.amber[800]!;
+      icon = Icons.report_problem;
+      status = 'Medium Risk';
     } else {
       borderColor = Colors.green;
       iconColor = Colors.green;
