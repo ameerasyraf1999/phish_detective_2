@@ -14,15 +14,17 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredMessages = _getFilteredMessages();
-    return Column(
-      children: [
-        _buildFilterAndSearch(),
-        Expanded(
-          child: filteredMessages.isEmpty
-              ? _buildEmptyState(context)
-              : _buildMessagesList(filteredMessages),
-        ),
-      ],
+    return Scaffold(
+      body: Column(
+        children: [
+          _buildFilterAndSearch(),
+          Expanded(
+            child: filteredMessages.isEmpty
+                ? _buildEmptyState(context)
+                : _buildMessagesList(filteredMessages),
+          ),
+        ],
+      ),
     );
   }
 
@@ -82,6 +84,7 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.message_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
@@ -184,7 +187,7 @@ class _SmsLogScreenState extends State<SmsLogScreen> {
                   const Spacer(),
                   if (phishingScore != null && isAnalyzed)
                     Text(
-                      'Phishing Probability: ${phishingScore.toStringAsFixed(4)}',
+                      'Score: ${phishingScore.toStringAsFixed(4)}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
