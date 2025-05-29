@@ -170,15 +170,67 @@ class _MainScreenState extends State<MainScreen> {
     AboutUsScreen(),
   ];
 
+  static const List<String> _titles = ['Dashboard', 'SMS Log', 'About Us'];
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    Navigator.of(context).pop(); // Close drawer if open
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: Text(_titles[_selectedIndex])),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(color: Theme.of(context).primaryColor),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.security, size: 48, color: Colors.white),
+                  SizedBox(height: 8),
+                  Text(
+                    'SMS Phish Detective',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Stay safe from SMS phishing',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.dashboard),
+              title: Text('Dashboard'),
+              selected: _selectedIndex == 0,
+              onTap: () => _onItemTapped(0),
+            ),
+            ListTile(
+              leading: Icon(Icons.sms),
+              title: Text('SMS Log'),
+              selected: _selectedIndex == 1,
+              onTap: () => _onItemTapped(1),
+            ),
+            ListTile(
+              leading: Icon(Icons.info),
+              title: Text('About Us'),
+              selected: _selectedIndex == 2,
+              onTap: () => _onItemTapped(2),
+            ),
+          ],
+        ),
+      ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
@@ -190,7 +242,7 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.info), label: 'About Us'),
         ],
         currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
+        onTap: (index) => setState(() => _selectedIndex = index),
       ),
     );
   }

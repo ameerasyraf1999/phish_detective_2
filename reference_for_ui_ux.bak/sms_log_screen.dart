@@ -1,0 +1,329 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../models/sms_message.dart';
+
+class SmsLogScreen extends StatefulWidget {
+  const SmsLogScreen({super.key});
+
+  @override
+  State<SmsLogScreen> createState() => _SmsLogScreenState();
+}
+
+class _SmsLogScreenState extends State<SmsLogScreen> {
+  String _filter = 'all';
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Consumer<AppProvider>(
+        builder: (context, appProvider, child) {
+          final filteredMessages = _getFilteredMessages(
+            appProvider.smsMessages,
+          );
+
+          return Column(
+            children: [
+              _buildFilterAndSearch(),
+              Expanded(
+                child: filteredMessages.isEmpty
+                    ? _buildEmptyState()
+                    : _buildMessagesList(filteredMessages, appProvider),
+              ),
+            ],
+          );
+        },
+      ),
+      floatingActionButton: Consumer<AppProvider>(
+        builder: (context, appProvider, child) {
+          return FloatingActionButton(
+            onPressed: appProvider.isLoading
+                ? null
+                : () => appProvider.refreshSmsData(),
+            child: appProvider.isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Icon(Icons.refresh),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFilterAndSearch() {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search messages...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _buildFilterChip('All', 'all')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildFilterChip('Safe', 'safe')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildFilterChip('Phishing', 'phishing')),
+                const SizedBox(width: 8),
+                Expanded(child: _buildFilterChip('Pending', 'pending')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value) {
+    final isSelected = _filter == value;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (_) {
+        setState(() {
+          _filter = value;
+        });
+      },
+      selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+      checkmarkColor: Theme.of(context).primaryColor,
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.message_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'No messages found',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Messages will appear here when detected',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessagesList(
+    List<SmsMessage> messages,
+    AppProvider appProvider,
+  ) {
+    return RefreshIndicator(
+      onRefresh: () => appProvider.refreshSmsData(),
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: messages.length,
+        itemBuilder: (context, index) {
+          final message = messages[index];
+          return _buildMessageCard(message, appProvider);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMessageCard(SmsMessage message, AppProvider appProvider) {
+    final isPhishing = message.isPhishing ?? false;
+    final isAnalyzed = message.isAnalyzed;
+
+    Color borderColor;
+    Color iconColor;
+    IconData icon;
+    String status;
+
+    if (!isAnalyzed) {
+      borderColor = Colors.orange;
+      iconColor = Colors.orange;
+      icon = Icons.pending;
+      status = 'Pending Analysis';
+    } else if (isPhishing) {
+      borderColor = Colors.red;
+      iconColor = Colors.red;
+      icon = Icons.warning;
+      status = 'Phishing Detected';
+    } else {
+      borderColor = Colors.green;
+      iconColor = Colors.green;
+      icon = Icons.check_circle;
+      status = 'Safe';
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: borderColor, width: 4)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: iconColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    status,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: iconColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        _showDeleteDialog(message, appProvider);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'From: ${message.sender}',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                message.message,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    _formatDateTime(message.timestamp),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  if (isAnalyzed && message.phishingScore != null) ...[
+                    const Spacer(),
+                    Text(
+                      'Score: ${(message.phishingScore! * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<SmsMessage> _getFilteredMessages(List<SmsMessage> messages) {
+    var filtered = messages;
+
+    // Apply filter
+    switch (_filter) {
+      case 'safe':
+        filtered = filtered
+            .where((m) => m.isAnalyzed && !(m.isPhishing ?? false))
+            .toList();
+        break;
+      case 'phishing':
+        filtered = filtered
+            .where((m) => m.isAnalyzed && (m.isPhishing ?? false))
+            .toList();
+        break;
+      case 'pending':
+        filtered = filtered.where((m) => !m.isAnalyzed).toList();
+        break;
+    }
+
+    // Apply search
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered
+          .where(
+            (m) =>
+                m.sender.toLowerCase().contains(_searchQuery) ||
+                m.message.toLowerCase().contains(_searchQuery),
+          )
+          .toList();
+    }
+
+    return filtered;
+  }
+
+  String _formatDateTime(DateTime timestamp) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(
+      timestamp.year,
+      timestamp.month,
+      timestamp.day,
+    );
+
+    if (messageDate == today) {
+      return 'Today ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+    } else if (messageDate == today.subtract(const Duration(days: 1))) {
+      return 'Yesterday ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year} ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+    }
+  }
+
+  void _showDeleteDialog(SmsMessage message, AppProvider appProvider) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Message'),
+          content: const Text(
+            'Are you sure you want to delete this message from the log?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (message.id != null) {
+                  appProvider.deleteSms(message.id!);
+                }
+              },
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
